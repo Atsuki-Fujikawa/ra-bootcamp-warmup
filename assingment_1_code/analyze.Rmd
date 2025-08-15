@@ -1,0 +1,137 @@
+---
+title: "analyze.Rmd"
+output: html_document
+date: "2025-08-14"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(gt)
+library(gtsummary)
+library(gtExtras)
+library(patchwork)
+
+#データの読み込み
+
+df_combined <- readRDS("C:/Users/Atsuki/OneDrive/Desktop/RAブートキャンプ/事前課題/assing1_sagyou/data/cleaned/df_combined.rds")
+
+#図１合計不登校者数の推移、表と棒グラフ
+
+df_sum_year <-
+ df_combined |>
+ group_by(year) |>
+ summarise(total_student = sum(num_student, na.rm = TRUE), total_refusal = sum(num_refusal, na.rm = TRUE)) |>
+ mutate(ratio = total_refusal / total_student * 100)
+
+df_sum_year_refusal <-
+ df_sum_year |>
+ select(year, total_refusal)
+
+df_sum_year_refusal |>
+  arrange(year) |>
+  gt(id = "table_1") |>
+  gt_theme_guardian() |>
+  tab_header(title = md("表１　合計不登校者数の推移"))
+
+figure_1 <- df_sum_year |>
+ ggplot(aes(x = factor(year, levels = year), y = total_refusal)) +
+ geom_col() +
+ labs(title = "図１　合計不登校者の推移", x = "年度", y = "合計不登校者数") +
+ theme_classic()
+ 
+ print(figure_1)
+
+#図２　不登校割合の推移、折れ線グラフ
+
+figure_2 <- df_sum_year |>
+ ggplot(aes(x = factor(year, levels = year), y = ratio, group = 1)) +
+ geom_line() +
+ geom_point() +
+ geom_text(aes(label = paste0(round(ratio, 1))), vjust = -0.6, size = 3) +
+ labs(title = "図１　合計不登校者の推移", x = "年度", y = "不登校割合(%)") +
+ theme_classic()
+
+print(figure_2)
+
+#図３　合計不登校者と不登校割合を重ねたグラフ
+
+coef <- max(tab$total_refusal, na.rm = TRUE) / max(tab$ratio, na.rm = TURE)
+
+figure_3 <- df_sum_year |>
+　ggplot(aes(x = factor(year, levels = year))) +
+  geom_col(aes(y = total_refusal), fill = "skyblue") +
+  geom_line(aes(y = ratio * coef, group = 1)) +
+  geom_point(aes(y = ratio * coef)) +
+  geom_text(aes(y = ratio * coef, label = round(ratio, 1)),
+            vjust = -0.6, size = 3) +
+  labs(title = "図３　合計不登校者数と割合の推移", x = "年度", y = "合計不登校者数") +
+  scale_y_continuous(
+    name = "合計不登校者数",
+    sec.axis = sec_axis(~ . / coef, name = "不登校割合(%)")
+  ) +
+  theme_classic()
+
+print(figure_3)
+
+#図４　ヒストグラム
+
+df_sum_22 <- df_combined |>
+ filter(year == 2022) |>
+ mutate(ratio = ratio*100)
+
+mean_sum_22 <- mean(df_sum_22$ratio, na.rm = TRUE)
+
+figure_4 <- df_sum_22 |>
+ ggplot(aes(x= ratio)) +
+ geom_histogram(bins = 10) +
+ geom_vline(xintercept = mean_22, color = "skyblue", linetype = "dashed", linewidth = 1) +
+ labs(title = "不登校割合のヒストグラム", x = "不登校割合", y = "度数") +
+ theme_classic()
+
+print(figure_4)
+
+#図５　都道府県別グラフ
+
+favorit_pre <- df_sum_22 |>
+ filter(prefecture == "福岡")
+
+figure_5 <- df_sum_22 |>
+ ggplot(aes(x = ratio, y = fct_reorder(prefecture, ratio))) +
+ geom_col() +
+ geom_col(data = favorit_pre, fill = "hotpink") +
+ labs(x = "不登校割合（％）", y = "都道府県", title = "図５　都道府県別不登校割合") +
+ theme_classic()
+
+print(figure_5)
+
+
+#不登校割合が増加している背景の考察
+
+不登校生徒数や割合が増加している背景について、インターネットの普及が挙げられると考える。特に現在は小学生でもスマートフォンを持ちインターネットにアクセスすることのできる時代において、インターネット依存に陥り、学校という外の世界からインターネットという中の世界に逃げてしまっているのではないかと考える。昔であれば、不登校であっても家にこもるだけであり、家にこもっているからと言って何かができるわけではない。しかし、今であれば家にこもってインターネットに時間を費やすことができるのである。特に、新型コロナウイルスの蔓延した2020以降に人数や割合の増加率が上昇しているが、家にいる時間が増えて、そのままインターネット依存に陥り、学校に行かなくなってしまったのだと考える。
+
