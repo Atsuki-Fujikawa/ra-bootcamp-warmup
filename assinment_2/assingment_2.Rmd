@@ -1,0 +1,149 @@
+---
+title: "assingment_2"
+output: html_document
+date: "2025-08-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+#Problem 1: NA Handling
+
+df <- tibble(
+ col1 = sample(c(NA, 1), size = 100, replace = TRUE)
+ ) |>
+ mutate(
+ is_na = if_else(is.na(col1), 1, 0)
+)
+
+view(df)
+
+#problem 2: Column Selection and Package Compatibility
+
+
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(readr)
+library(here)
+library(tidyselect)
+library(purrr)
+library(estimatr)
+
+df_population <- readr::read_csv(here::here("assignment23_data", "raw", "population_ps2.csv"))
+
+view(df_population)
+
+list_vars <- df_population |> 
+ dplyr::select(dplyr::contains("name"))
+
+df_population |>
+ select(list_vars)
+
+view(list_vars)
+
+#Problem 3: Log Transformation
+
+df_population <- readr::read_csv(here::here("assignment23_data", "raw", "population_ps2.csv"))
+
+view(df_population)
+
+df_lm <- df_population |>
+ arrange(city_name, year) |>
+ mutate(
+ change_rate = (log(population) - dplyr::lag(log(population), n = 1)), 
+ .by = city_id
+) |>
+dplyr::filter(year == 2015)
+
+lm(change_rate ~ log(population), data = df_lm)
+
+
+#Problem 4: Reusable ggplot Code
+
+set.seed(111)
+
+df <- tibble(
+ col_1 = seq(1,10),
+ col_2 = seq(11, 20) + rnorm(n = 10, 0, 1),
+ col_3 = seq(30, 21) + rnorm(n = 10, 0, 1)
+)
+
+function_1 <- function(data, x, y) {
+ ggplot(data, aes(x = {{x}}, y = {{y}})) +
+ geom_point() +
+ theme_minimal()
+}
+
+plot_col_12 <- function_1(df, col_1, col_2)
+plot_col_13 <- function_1(df, col_1, col_3)
+plot_col_23 <- function_1(df, col_2, col_3)
+
+#Problem 5: Dynamic Column Naming in mutate()
+
+df <- tibble(
+ a = seq(1, 10)
+)
+
+add_column <- function(df, is_name) {
+ nm <- ensym(is_name)
+ df <- df |>
+ mutate(
+  !!nm := if_else(a > 5, TRUE, FALSE)
+)
+ return(df)
+}
+
+
+add_column(df, "higher")|>
+ dplyr::filter(higher == TRUE)
+
+
+#Problem 6: Simplifying Model Code with Formula Generation
+
+set.seed(111)
+
+df <- tibble(
+ y = seq(101, 200),
+ x_1 = seq(1, 100) + rnorm(n = 100, 0, 1),
+ x_2 = sample(c(0,1), 100, replace = TRUE),
+ x_3 = seq(50, 149) + rnorm(n = 100, 0, 1)
+)
+
+
+linear_models <- function(df, y = "y", list) {
+ model <- imap(list, ~reformulate(termlabels = .x, response = y))
+ imap(model, ~ lm_robust(.x, data = df))
+}
+
+list <- list(
+  model_1 = c("x_1"),
+  model_2 = c("x_1","x_2"),
+  model_3 = c("x_2"),
+  model_4 = c("x_1","x_2","x_3")
+)
+
+linear_models(df, y = "y", list)
+
